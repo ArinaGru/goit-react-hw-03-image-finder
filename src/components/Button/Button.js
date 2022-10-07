@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 
-export const Button = onClick => {
+export const Button = ({ onClick }) => {
   return (
     <button type="button" className="Button" onClick={onClick}>
       Load more

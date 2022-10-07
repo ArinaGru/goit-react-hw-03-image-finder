@@ -15,12 +15,23 @@ export default class App extends PureComponent {
     page: 1,
     hitsPerPage: 12,
     isLoading: false,
-    LoadMoreBtn: false,
+    totalHits: null,
   };
 
-  getImages = async (query, pageAPI = 1) => {
-    const { hitsPerPage, page } = this.state;
-    this.setState({ isLoading: true, LoadMoreBtn: false });
+  componentDidUpdate(prevProps, prevState) {
+    const { page, query } = this.state;
+
+    const prevQuery = prevState.query;
+    const prevPage = prevState.page;
+
+    if (prevPage !== page || prevQuery !== query) {
+      this.getImages(query, page);
+    }
+  }
+
+  getImages = async (query, pageAPI) => {
+    const { hitsPerPage } = this.state;
+    this.setState({ isLoading: true });
 
     try {
       const images = await API.addImages(query, pageAPI, hitsPerPage);
@@ -30,24 +41,10 @@ export default class App extends PureComponent {
           `Sorry, there are no images matching your search: ${query}. Please try again.`
         );
         return;
-      } else if (images.totalHits <= hitsPerPage) {
-        this.setState(state => ({
-          images: [...state.images, ...images.hits],
-          LoadMoreBtn: false,
-        }));
-        return;
-      } else if (Math.ceil(images.totalHits / hitsPerPage) === page) {
-        this.setState(state => ({
-          images: [...state.images, ...images.hits],
-          LoadMoreBtn: false,
-        }));
-        return;
       }
-
       this.setState(state => ({
         images: [...state.images, ...images.hits],
-        page: state.page + 1,
-        LoadMoreBtn: true,
+        totalHits: images.totalHits,
       }));
     } catch (error) {
       toast.error(`Sorry, something went wrong. Please try again.`);
@@ -58,11 +55,14 @@ export default class App extends PureComponent {
 
   handleFormSubmit = query => {
     this.setState({ query, images: [], page: 1 });
-    this.getImages(query);
+  };
+
+  handleLoadMoreBtn = () => {
+    this.setState(state => ({ page: state.page + 1 }));
   };
 
   render() {
-    const { images, isLoading, query, page, LoadMoreBtn } = this.state;
+    const { images, isLoading, totalHits } = this.state;
 
     return (
       <div className="App">
@@ -85,7 +85,9 @@ export default class App extends PureComponent {
 
         {images.length > 0 && <ImageGallery images={images} />}
 
-        {LoadMoreBtn && <Button onClick={() => this.getImages(query, page)} />}
+        {!isLoading && images.length > 0 && images.length < totalHits && (
+          <Button onClick={this.handleLoadMoreBtn} />
+        )}
       </div>
     );
   }
